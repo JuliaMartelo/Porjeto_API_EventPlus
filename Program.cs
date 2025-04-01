@@ -1,3 +1,4 @@
+using Microsoft.Azure.CognitiveServices.ContentModerator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -80,7 +81,7 @@ builder.Services.AddSwaggerGen(options =>
         Contact = new OpenApiContact
         {
             Name = "Carlos Roque",
-            Url = new Uri("https://www.linkedin.com/in/roquecarlos/")
+            Url = new Uri("https://github.com/JuliaMartelo")
         },
         License = new OpenApiLicense
         {
@@ -148,6 +149,13 @@ if (app.Environment.IsDevelopment())
         options.RoutePrefix = string.Empty;
     });
 }
+
+//Aplicar o serviço cognitivo
+//Habilita o servico de moderador de conteudo  do Microsoft Azure
+builder.Services.AddSingleton(provider => new ContentModeratorClient(new ApiKeyServiceClientCredentials("api key gerado no azure"))
+{
+    Endpoint = "Adicionar o endpoint gerado no azure"
+});
 
 //Adiciona o Cors(política criada)
 app.UseCors("CorsPolicy");
