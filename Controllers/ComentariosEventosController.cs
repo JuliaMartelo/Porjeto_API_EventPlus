@@ -1,5 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Azure;
+using Azure.AI.ContentSafety;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using webapi.event_.Domains;
+using webapi.event_.Interfaces;
 
 namespace webapi.event_.Controllers
 {
@@ -8,6 +13,109 @@ namespace webapi.event_.Controllers
     [Produces("application/json")]
     public class ComentariosEventosController : ControllerBase
     {
+        private readonly IComentariosEventosRepository _comentariosEventosRepository;
+        private readonly ContentSafetyClient _contentSafetyClient;
+
+        public ComentariosEventosController(ContentSafetyClient contentSafetyClient, IComentariosEventosRepository comentariosEventosRepository)
+        {
+
+            _comentariosEventosRepository = comentariosEventosRepository;
+            _contentSafetyClient = contentSafetyClient;
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Post(ComentariosEventos comentarios)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(comentarios.Descricao))
+                {
+                    return BadRequest("O texto a ser moderado nao pode estar vazio!");
+                }
+
+                //Criar objeto de analise do content safety
+                var request = new AnalyzeTextOptions(comentarios.Descricao);
+
+                //Chamar a API do content safety
+                Response<AnalyzeTextResult> response = await _contentSafetyClient.AnalyzeTextAsync(request);
+
+                //Verificar se o texto analisado tem alguma severidade
+                bool temConteudoInapropriado = response.Value.CategoriesAnalysis.Any(c => c.Severity > 0);
+
+                //Se o conteudo for inaproriado, nao exibe, caso contrario exibe
+                comentarios.Exibe = !temConteudoInapropriado;
+
+                //Cadastra de fato o comentario
+                _comentariosEventosRepository.Cadastrar(comentarios);
+
+                return Ok();
+
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public IActionResult Delete(Guid id)
+        {
+            try
+            {
+                _comentariosEventosRepository.Deletar(id);
+
+                return NoContent();
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        [HttpGet("ListarSomenteExibe")]
+        public IActionResult GetExibe(Guid id)
+        {
+            try
+            {
+                return Ok(_comentariosEventosRepository.ListarSomenteExibe(id));
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        [HttpGet]
+        public IActionResult Get(Guid id)
+        {
+            try
+            {
+                return Ok(_comentariosEventosRepository.Listar(id));
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        [HttpGet("BuscarPorIdUsuario")]
+        public IActionResult GetByIdUser(Guid idUsuario, Guid idEvento)
+        {
+            try
+            {
+                return Ok(_comentariosEventosRepository.BuscarPorIdUsuario(idUsuario, idEvento));
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+
+
 
     }
 }
